@@ -1,0 +1,13 @@
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+
+[tool.isort]
+profile = "black"
+float_to_top = "true"
+
+[tool.black]
+line-length = 88
