@@ -1,6 +1,28 @@
 """Training functions"""
 import numpy as np
 import torch
+from torchvision import transforms
+
+# Default transformations
+TRAIN_TRANSFORMS = transforms.Compose(
+    [
+        transforms.RandomRotation(20),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomResizedCrop(size=(256, 256), scale=(0.8, 1.0)),
+        transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
+        transforms.RandomApply(
+            [transforms.RandomAffine(0, translate=(0.1, 0.1))], p=0.5
+        ),
+        transforms.RandomApply(
+            [transforms.RandomPerspective(distortion_scale=0.2)], p=0.5
+        ),
+        transforms.Resize((256, 256)),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=[0.4823, 0.4823, 0.4823], std=[0.2363, 0.2363, 0.2363]
+        ),
+    ]
+)
 
 
 class EarlyStopping:
@@ -10,17 +32,18 @@ class EarlyStopping:
         self, patience=7, verbose=False, delta=0, path="checkpoint.pt", trace_func=print
     ):
         """
-        Args:
-            patience (int): How long to wait after last time validation loss improved.
-                            Default: 7
-            verbose (bool): If True, prints a message for each validation loss improvement.
-                            Default: False
-            delta (float): Minimum change in the monitored quantity to qualify as an improvement.
-                            Default: 0
-            path (str): Path for the checkpoint to be saved to.
-                            Default: 'checkpoint.pt'
-            trace_func (function): trace print function.
-                            Default: print
+        Parameters
+        ----------
+        patience : int
+            How long to wait after last time validation loss improved. Default value 7
+        verbose : bool
+            If True, prints a message for each validation loss improvement. Default is False
+        delta : float
+            Minimum change in the monitored quantity to qualify as an improvement. Default is 0
+        path : str
+            Path for the checkpoint to be saved to. Default 'checkpoint.pt'
+        trace_func : Callable
+            trace print function. Default is print().
         """
         self.patience = patience
         self.verbose = verbose
@@ -59,37 +82,3 @@ class EarlyStopping:
             )
         torch.save(model.state_dict(), self.path)
         self.val_loss_min = val_loss
-
-
-def train_one_epoch(training_loader, optimizer, model, loss_fn, epoch_index):
-    running_loss = 0.0
-    last_loss = 0.0
-
-    # Here, we use enumerate(training_loader) instead of
-    # iter(training_loader) so that we can track the batch
-    # index and do some intra-epoch reporting
-    for i, data in enumerate(training_loader):
-        # Every data instance is an input + label pair
-        inputs, labels = data
-
-        # Zero your gradients for every batch!
-        optimizer.zero_grad()
-
-        # Make predictions for this batch
-        outputs = model(inputs)
-
-        # Compute the loss and its gradients
-        loss = loss_fn(outputs, labels)
-        loss.backward()
-
-        # Adjust learning weights
-        optimizer.step()
-
-        # Gather data and report
-        running_loss += loss.item()
-        if i % 100 == 99:
-            last_loss = running_loss / 1000  # loss per batch
-            print("  batch {} loss: {}".format(i + 1, last_loss))
-            running_loss = 0.0
-
-    return last_loss
